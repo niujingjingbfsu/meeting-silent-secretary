@@ -19,8 +19,10 @@
    调用报 `missing required scope(s)` 之类的错误，跟着 CLI 自带的错误提示（hint）处理，
    不要自己猜 scope 名字。
 2. 本机安装并鉴权好 [`lark-cli`](https://github.com/)（`--as bot` 身份可用）。
-3. 本机能运行 `claude`（Claude Code CLI），带 `--dangerously-skip-permissions` 权限——
-   判断层常驻会话和每个一次性任务的生成都靠它。
+3. 一个能真正执行任务的"大脑"——**默认是本机的 `claude`（Claude Code CLI，带
+   `--dangerously-skip-permissions`）**，判断层常驻会话和每个一次性任务都靠它。
+   **如果你想接别的 agent（不是 Claude），见下面"接入非 Claude 的 agent"一节**——
+   执行层和判断层都是可插拔的，不是非 Claude 不可，只是出厂默认值是 Claude Code。
 4. Python 3.9+，`pip install -r requirements.txt`（只需要 `pyyaml`）。
 5. 常驻的 asyncio 事件循环——这个进程要作为长期运行的服务，不是一次性脚本。
 
@@ -64,6 +66,35 @@ python3 secretary_transcript_main.py --meeting-no <9位会议号> --config confi
 ```
 
 详细设计见 [`SKILL.md`](./SKILL.md)。
+
+## 接入非 Claude 的 agent
+
+本包默认用 Claude Code 干活，但"判断"和"干活"这两层都做成了可插拔接口（`executors.py`），
+不是必须用 Claude：
+
+```python
+from secretary_client import MeetingSecretaryClient
+from executors import TaskExecutor
+
+class MyAgentExecutor(TaskExecutor):
+    async def run(self, instruction: str, cwd: str) -> str:
+        # 用你自己的 agent 执行 instruction（必须有等价的工具调用能力：读写文件/跑shell/
+        # 联网搜索/调 lark-cli 操作飞书——这不是一次纯文本生成，是真的要能"去执行"），
+        # 返回它的最终文本输出。这段文本里必须包含 instruction 里要求的
+        # BARRAGE_SENT/TASK_DONE/SPOKEN_ANSWER/DELIVERABLE_LINK 这几个标记，
+        # MeetingSecretaryClient 靠这几个标记解析任务是否真的完成。
+        return await your_agent.run_with_tools(instruction, cwd=cwd)
+
+def my_judge_factory():
+    # 返回一个实现了 start/judge/close/alive 这4个方法的对象，接口约定见 executors.py 顶部。
+    return MyAgentJudge(...)
+
+client = MeetingSecretaryClient(task_executor=MyAgentExecutor(), judge_factory=my_judge_factory)
+```
+
+**接执行层要注意**：这不是简单换一个 chat completion API 端点——`_run_async_task` 里
+的任务本质是"查资料/写文档/建表格/调飞书API"这类需要真实执行能力的事，你接的 agent 必须
+自带等价的工具调用/文件读写/shell执行能力，纯文本生成模型接不上去。
 
 ## 已知限制
 

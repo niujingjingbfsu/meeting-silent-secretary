@@ -7,14 +7,16 @@ transcript_received 事件，带真实说话人身份) + 会中弹幕当"耳朵"
 不包含：ByteView实时音频/豆包ASR/TTS出声（那是主持人等"会说话"角色专用的完全独立路径）、
 任何持续性技能（看板/Slides等，那是另一套更大的能力，这里只做"根据语音指令干活"这一件事）、
 语音人设切换（会牵连独立的语音/TTS系统）。
+
+判断层和任务执行层都是可插拔的（见 executors.py）——默认都用 Claude Code，但不绑死在它
+身上：判断层通过构造参数 judge_factory 换、执行层通过构造参数 task_executor 换。
 """
 import asyncio
 import os
 import re
 import time
 
-
-CLAUDE_BIN = "claude"
+from executors import ClaudeCodeExecutor
 
 _TASK_COMMITMENT_PHRASES = ("我来", "我这就", "我去", "我查", "我看", "我帮您", "我帮你", "帮您查",
                              "帮你查", "帮您看", "帮你看", "我写", "帮您写", "帮你写", "马上办", "这就去")
@@ -35,7 +37,13 @@ class MeetingSecretaryClient:
 
     _FILLER_LEAD_RE = re.compile(r"^(好的|好嘞|好呀|好啊|好|嗯|哦|OK|ok|这就|那我|那就|这样|那)[，。！,\s]*")
 
-    def __init__(self):
+    def __init__(self, task_executor=None, judge_factory=None):
+        """task_executor：TaskExecutor 实例，负责真正执行 DO 任务（默认 ClaudeCodeExecutor，
+        调本机 claude CLI）。想接别的agent执行任务，传一个自己的 TaskExecutor 子类实例进来，
+        见 executors.py 的接口说明。
+        judge_factory：一个无参可调用对象，调用后要返回一个实现了 judge 接口（start/judge/
+        close/alive）的对象。传了就完全接管判断层后端，忽略下面 judge_backend/judge_api_key
+        等配置；不传则沿用默认逻辑（judge_backend="cli"/"api" 二选一，均为 Claude 家族模型）。"""
         self.role = "secretary"
         self.bot_name = "小助手"          # 主叫名——建议用 ASR/转写容易听准的中文称呼
         self.bot_name_alt = "Seraphina"   # 备用名——bot 在飞书里注册的正式名字
@@ -44,7 +52,10 @@ class MeetingSecretaryClient:
         self.owner_open_id = ""
         self.owner_name_variants = ()
 
-        # 判断后端配置
+        self.task_executor = task_executor or ClaudeCodeExecutor()
+        self._judge_factory = judge_factory
+
+        # 判断后端配置（仅在没传 judge_factory 时生效）
         self.judge_model = None
         self.judge_effort = "low"
         self.judge_backend = "cli"    # "cli"=本地 claude 常驻会话 / "api"=直连 Anthropic API
@@ -143,7 +154,12 @@ class MeetingSecretaryClient:
                 asyncio.ensure_future(self._host_judge_and_drive())
 
     def _make_judge(self):
-        """按 judge_backend 选判断后端：api=直连 Anthropic(快) / cli=本地 claude 常驻会话。"""
+        """判断后端：优先用构造时传入的 judge_factory（接入非Claude的agent就靠这个）；
+        没传就按 judge_backend 选内置的两个 Claude 家族后端：api=直连 Anthropic(快) /
+        cli=本地 claude 常驻会话。"""
+        if self._judge_factory:
+            print("[secretary] 判断后端 = 自定义 judge_factory")
+            return self._judge_factory()
         if self.judge_backend == "api" and self.judge_api_key:
             from api_judge import ApiJudge
             print(f"[secretary] 判断后端 = Anthropic API（直连，端点={self.judge_base_url or 'api.anthropic.com'}）")
@@ -722,15 +738,8 @@ class MeetingSecretaryClient:
         task_done = None
         deliverable_link = ""
         try:
-            proc = await asyncio.create_subprocess_exec(
-                "nice", "-n", "19", CLAUDE_BIN, "-p", "--output-format", "text",
-                "--dangerously-skip-permissions", instr,
-                cwd=self.remote_workdir,
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-            )
-            out, err = await proc.communicate()
-            ok = proc.returncode == 0
-            out_text = (out or err).decode(errors="ignore")
+            out_text = await self.task_executor.run(instr, cwd=self.remote_workdir)
+            ok = True
             barrage_ok = "BARRAGE_SENT: YES" in out_text.strip().upper()
             for ln in out_text.splitlines():
                 s = ln.strip().upper()

@@ -64,10 +64,20 @@ description: 会中无声助手（会议秘书）——已打包成独立、自�
 
 **已知问题**：曾在一次实测中观察到 `DELIVERABLE_LINK` 在日志里被截断成半截 URL 的现象，具体原因未查清，不影响任务完成判定本身。
 
+## 核心机制四：判断层与执行层都是可插拔的（`executors.py`）
+
+**出厂默认用 Claude Code**（`ClaudeCodeExecutor` 调本机 `claude` CLI，判断层默认 `claude_judge.ClaudeJudge`），但没有硬编码死——`MeetingSecretaryClient(task_executor=..., judge_factory=...)` 两个构造参数可以整体换掉这两层的"大脑"，接入非 Claude 的 agent。
+
+要点：
+- 执行层接口只有一个方法：`async def run(instruction: str, cwd: str) -> str`——传入完整任务指令，返回最终文本（文本里必须包含 `BARRAGE_SENT`/`TASK_DONE`/`SPOKEN_ANSWER`/`DELIVERABLE_LINK` 这几个标记，`_run_async_task` 靠这几个标记解析结果，跟谁执行的无关）。
+- **接执行层的agent必须有真实的工具调用能力**（读写文件/跑shell命令/调lark-cli/联网搜索），不是纯 chat completion——任务本身要求"能真的去执行"，不是"生成一段建议文字"。
+- 判断层接口是 4 个方法/属性：`start(setup)`/`judge(turn)`/`close()`/`alive`，`claude_judge.py`/`api_judge.py` 都已经按这个约定写好（互为参考实现）。
+- 详细用法+代码示例见 [`README.md`](./README.md) 的"接入非 Claude 的 agent"一节。
+
 ## 依赖 & 前置条件
 
 - Feishu VC Agent 会中能力——`vc:meeting.bot.join:write`（入会/离会）+ `vc:meeting.meetingevent:read`（拉 `transcript_received`/弹幕事件）+ 发会中消息所需的 scope。装的时候如果 `lark-cli` 报 `missing required scope(s)`，跟着 CLI 自带的 `hint` 走，不要自己猜 scope 名字。
-- Claude CLI（`claude` 命令，带 `--dangerously-skip-permissions`）——判断层常驻会话 + 每个 DO 任务生成的子进程都靠它。
+- 一个能真正执行任务的 agent——出厂默认是 Claude CLI（`claude` 命令，带 `--dangerously-skip-permissions`），不想用 Claude 见上面"可插拔"一节自己接。
 - 常驻 asyncio 事件循环（进程必须是长期运行的架构，不能是一次性 subprocess）。
 - **不需要**：任何第三方语音/ASR 账号（火山引擎/豆包等）——本能力包完全不发起任何语音相关的网络请求。
 
