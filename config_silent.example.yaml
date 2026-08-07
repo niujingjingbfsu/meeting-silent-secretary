@@ -1,0 +1,24 @@
+# 无声助手（会议秘书）配置模板——复制成 config_silent.yaml 后填自己的值。
+# 只用飞书逐字稿耳朵，不接第三方 ASR，不需要注册任何语音厂商账号。
+
+reply_chat_id: "结果兜底发送的群 chat_id（弹幕发不出去时的兜底渠道，建群随便建一个，可留空）"
+
+judge_model: "claude-sonnet-5"
+judge_backend: "cli"        # 判断层走本机 claude CLI 常驻会话；也支持切 api 后端，见 README.md
+judge_api_key: ""           # judge_backend=api 时才需要
+judge_api_model: ""
+judge_base_url: ""
+
+bot_name: "小助手"           # 唤醒词①——建议用中文、ASR/转写容易听准的称呼
+bot_name_alt: "你的Bot正式名字"  # 唤醒词②——bot 在飞书里注册的正式名字，两个都会被判断层认成"在叫我"
+
+opening_line: ""            # 入会后发的第一条弹幕，留空则用内置的通用开场白
+
+# ---- 以下全部可选，留空 = 对应功能自动跳过 ----
+owner_open_id: ""            # 部署者本人的飞书 open_id，填了才会有"会里提到你"的私聊提醒
+owner_name_variants: []      # 部署者姓名的各种变体，比如 ["张三", "小张"]，配合上面一项使用
+
+remote_workdir: ""           # 生成子进程的工作目录 + 产出物本地根目录，留空用当前目录
+public_base_url: ""          # 产出物对外可访问的根地址，比如 "https://your-domain.com/live"；
+                              # 留空则持续技能只在本地生成文件，弹幕里只说"已保存本地"不给链接
+remote_publish_target: ""    # 形如 "user@host:/path"，配置了才会把产出物 scp 推到这台服务器

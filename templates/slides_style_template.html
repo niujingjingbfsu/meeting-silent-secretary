@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会议实时 Slides · 样式锁定模板（仅供参考结构，不要直接对外使用本文件）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shrikhand&family=Zilla+Slab:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Caveat:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   主题（Scatterbrain 预设 → 2026-07-24 会中语音指令改版：晶晶明确指定改用这套模板）
+   来源：GitHub zarazhangrui/beautiful-html-templates，
+         templates/scatterbrain/（便利贴 + 软木板视觉系统，design.md + template.html
+         两份参考文件已本地阅读，本文件是照着两者忠实搬运、仅做下面 3 处必要改动的锁定版）。
+   锁定版本——生成时原样复用，不要重新配色/换字体/删 class。
+   本次替换的旧版是"深石墨蓝底 + 香槟金"极简卡片风（Bold Signal 系），晶晶 2026-07-24
+   明确要求换成 Scatterbrain 这套便利贴/软木板风格，改动仅限下面 3 点：
+
+   改动 1（CJK 兜底，必做）：Shrikhand / Zilla Slab / Caveat 三个字体都是纯拉丁装饰字体，
+   不带中文字形。这个系统里生成的正文全是中文（会中讨论内容），如果不处理，中文会静默
+   回退到系统默认字体、丢光视觉识别度——这是之前那版模板真实踩过的同一个坑（Archivo
+   Black/Space Grotesk 也不带中文字形），这次直接照抄同样的修复思路：在每个 font-family
+   列表里追加 'Noto Sans SC' 作为中文兜底，同一列表内浏览器按字符各自选字体，英文/数字
+   仍然走 Shrikhand/Zilla Slab/Caveat，中文自动落到 Noto Sans SC。Shrikhand 只有 400 一个
+   字重但视觉上很粗壮（chunky display serif），中文配 Noto Sans SC 900（最粗一档）才能在
+   视觉重量上对齐，避免"英文标题很跳、中文标题发虚"的重字重不匹配；Zilla Slab 请求了
+   300-700 多档字重，中文对应配 400/500（正文常用）；Caveat 是纯手写体，design.md 里
+   Known CJK Gap 一节明确说没有对应中文替代——本模板遵循它的建议，Caveat 手写体只用在
+   拉丁文小字注（":)"/"OK" 这类装饰性旁注），不用来写中文正文，所以 Caveat 不需要也不加
+   中文兜底。
+
+   改动 2（页码指示器，必做）：Scatterbrain 设计体系本身"没有常驻 chrome"（design.md 原话：
+   no progress bar, no slide counter, no nav hint），但会中场景需要看的人知道翻到第几页、
+   一共几页，所以新增一个贴合便利贴/软木板美学的角标指示器 .page-tag——一张小号 Caveat
+   手写体的迷你便利贴，钉在右下角，写"3 / 8"这样的页码，带自己的小图钉，视觉上跟别的
+   贴纸是同一套语言，不是通用进度条/圆点（那种是别的模板系统的语言，这里不用）。
+
+   改动 3（智能自动刷新，必做）：旧版是无脑定时 location.reload()，晶晶反馈刷新哪怕内容
+   没变也会闪一下、掉页码；这版改成轮询文件的 Last-Modified 头，真的变了才刷新，没变
+   什么都不做，见下方 script 标签里的说明。
+   =========================================== */
+:root {
+    --yellow: #ffe066;
+    --yellow-deep: #ffd43b;
+    --blue: #a5d8ff;
+    --blue-deep: #74c0fc;
+    --pink: #ffc9c9;
+    --pink-deep: #ff9f9f;
+    --green: #b2f2bb;
+    --green-deep: #8ce99a;
+    --orange: #ffcc80;
+    --purple: #d0bfff;
+    --cream: #faf8f3;
+    --paper: #f7f5f0;
+    --ink: #2d2a26;
+    --ink-light: #5c5750;
+    --shadow: rgba(45, 42, 38, 0.15);
+    --shadow-deep: rgba(45, 42, 38, 0.25);
+    /* 中文兜底同列在每个 font-family 尾部，见改动 1 说明 */
+    --font-display: 'Shrikhand', 'Noto Sans SC', cursive;
+    --font-body: 'Zilla Slab', 'Noto Sans SC', serif;
+    --font-hand: 'Caveat', cursive;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+    font-family: var(--font-body);
+    background: var(--paper);
+    color: var(--ink);
+    overflow: hidden;
+    cursor: default;
+    height: 100vh;
+}
+
+/* 自定义光标——图钉造型，贴合"把想法钉在板上"的比喻 */
+.slide {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='5' fill='%23ff6b6b'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%23fff'/%3E%3C/svg%3E") 12 12, auto;
+}
+
+/* 纸张颗粒纹理——常驻在最上层，4% 透明度，强化"纸+软木"质感 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 200px 200px;
+}
+
+.presentation { position: relative; width: 100vw; height: 100vh; }
+
+.slide {
+    width: 100vw; height: 100vh;
+    position: absolute; top: 0; left: 0;
+    display: none;
+    align-items: center; justify-content: center;
+    overflow: hidden;
+    padding: 3rem;
+    page-break-after: always;
+}
+.slide.active { display: flex; }
+
+.slide::before { content: ''; position: absolute; inset: 0; z-index: 0; }
+
+/* 软木板底 */
+.bg-cork::before {
+    background:
+        radial-gradient(ellipse at 20% 30%, rgba(210, 170, 120, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(190, 150, 100, 0.2) 0%, transparent 40%),
+        linear-gradient(135deg, #e8ddd0 0%, #d4c5b0 50%, #c9b8a0 100%);
+}
+.bg-cork::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23b8a088' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.5;
+    z-index: 0;
+}
+
+/* 桌面纸张底 */
+.bg-paper::before { background: linear-gradient(180deg, #faf8f3 0%, #f5f2ec 100%); }
+.bg-paper::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+        linear-gradient(rgba(200, 190, 175, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 190, 175, 0.08) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+}
+
+/* 暖光渐变底 */
+.bg-warm::before {
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(255, 224, 102, 0.4) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(165, 216, 255, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(255, 201, 201, 0.15) 0%, transparent 60%),
+        linear-gradient(160deg, #fdf8f0 0%, #f7f0e6 100%);
+}
+
+/* 便利贴基础样式 */
+.post-it {
+    position: relative;
+    padding: 2rem;
+    box-shadow: 2px 3px 15px var(--shadow), 0 1px 3px var(--shadow-deep);
+    transition: transform 0.3s ease;
+    z-index: 1;
+}
+.post-it-yellow { background: linear-gradient(135deg, var(--yellow) 0%, var(--yellow-deep) 100%); }
+.post-it-blue   { background: linear-gradient(135deg, var(--blue) 0%, var(--blue-deep) 100%); }
+.post-it-pink   { background: linear-gradient(135deg, var(--pink) 0%, var(--pink-deep) 100%); }
+.post-it-green  { background: linear-gradient(135deg, var(--green) 0%, var(--green-deep) 100%); }
+.post-it-orange { background: var(--orange); }
+.post-it-purple { background: var(--purple); }
+.post-it-white  { background: #fff; border: 2px solid var(--ink); }
+
+/* 图钉装饰（::before），红/蓝/绿/金 4 色 */
+.pin::before {
+    content: '';
+    position: absolute; top: -12px; left: 50%;
+    transform: translateX(-50%);
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a);
+    box-shadow: 0 2px 4px var(--shadow-deep), inset -2px -2px 4px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+.pin-blue::before  { background: radial-gradient(circle at 30% 30%, #4dabf7, #1864ab); }
+.pin-green::before { background: radial-gradient(circle at 30% 30%, #69db7c, #2f9e44); }
+.pin-gold::before  { background: radial-gradient(circle at 30% 30%, #ffd43b, #f59f00); }
+
+/* 胶带装饰（::after） */
+.tape::after {
+    content: '';
+    position: absolute; top: -15px; left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    width: 80px; height: 25px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    z-index: 10;
+}
+
+/* 字体角色：Shrikhand 展示体 / Zilla Slab 正文体 / Caveat 手写体（均已按改动1追加中文兜底）*/
+h1, h2, h3, .feature-icon, .stat-value, .compare-vs, .photo-placeholder {
+    font-family: var(--font-display);
+    /* 中文场景下希望 Noto Sans SC 落到 900（最粗一档），视觉粗细才对得上 Shrikhand 的
+       "厚重感"；但 font-weight: 900 是对整个 font-family 列表生效的请求，Shrikhand 只有
+       400 一个静态字重，浏览器遇到请求不存在的字重时默认会做"合成粗体"（人工加粗描边）
+       而不是什么都不做——如果不加 font-synthesis: none，英文/数字会被 Shrikhand 合成
+       粗体拉丑，跟设计系统本身的 400 チャンキー视觉不符。加上 font-synthesis: none 后，
+       Shrikhand 的拉丁字形保持原生 400，只有 Noto Sans SC 的中文字形会真的用它自带的
+       900 字重文件渲染——两边各自用自己真实存在的字重，都不是合成出来的假粗体。 */
+    font-weight: 900;
+    font-synthesis: none;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+}
+h1 { font-size: clamp(2.5rem, 5vw, 4.5rem); color: var(--ink); }
+h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); color: var(--ink); }
+h3 { font-size: clamp(1.3rem, 2.5vw, 1.8rem); color: var(--ink); }
+p {
+    font-family: var(--font-body);
+    font-size: clamp(1rem, 1.5vw, 1.25rem);
+    line-height: 1.7;
+    color: var(--ink-light);
+}
+.handwritten {
+    font-family: var(--font-hand);
+    font-size: clamp(1.2rem, 2vw, 1.6rem);
+    line-height: 1.4;
+}
+.label {
+    font-family: var(--font-hand);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--ink-light);
+}
+
+.slide-content { position: relative; z-index: 1; max-width: 1200px; width: 100%; }
+
+/* ===== 标题页 ===== */
+.slide-title { flex-direction: column; text-align: center; }
+.title-cluster { position: relative; display: inline-block; }
+.main-title-postit { display: inline-block; padding: 3rem 4rem; transform: rotate(-2deg); }
+.title-accent-1 {
+    position: absolute; top: -40px; right: -60px;
+    padding: 1.5rem 2rem; transform: rotate(12deg);
+    font-family: var(--font-hand); font-size: 1.5rem; z-index: 2;
+}
+.title-accent-2 {
+    position: absolute; bottom: -30px; left: -50px;
+    padding: 1.2rem 1.8rem; transform: rotate(-8deg); z-index: 2;
+}
+.subtitle-text {
+    margin-top: 3rem; font-family: var(--font-body); font-size: 1.3rem;
+    color: var(--ink-light); max-width: 500px; line-height: 1.6;
+}
+
+/* ===== 大字宣言 ===== */
+.statement-layout { display: flex; align-items: center; justify-content: center; gap: 3rem; flex-wrap: wrap; }
+.statement-postit { max-width: 700px; padding: 3.5rem 4rem; transform: rotate(1deg); text-align: center; }
+.statement-postit h2 { font-size: clamp(2rem, 4vw, 3.5rem); margin-bottom: 1.5rem; }
+.side-note { position: absolute; right: 5%; top: 15%; padding: 1.5rem; max-width: 200px; transform: rotate(8deg); }
+
+/* ===== 两栏布局 ===== */
+.two-col-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+.col-postit { padding: 2.5rem; }
+.col-postit h3 { margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--ink); display: inline-block; }
+.col-postit p { margin-bottom: 1rem; }
+.col-postit ul { list-style: none; padding: 0; }
+.col-postit li { font-family: var(--font-body); font-size: 1.1rem; padding: 0.5rem 0; padding-left: 1.5rem; position: relative; line-height: 1.6; }
+.col-postit li::before { content: '\2713'; position: absolute; left: 0; font-weight: bold; font-size: 1.2rem; }
+
+/* ===== 图表卡（白色卡片 + 内联 SVG）===== */
+.chart-layout { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 3rem; align-items: center; }
+.chart-container { background: #fff; padding: 2.5rem; box-shadow: 2px 3px 15px var(--shadow); transform: rotate(-1deg); }
+.chart-legend { padding: 2rem; transform: rotate(2deg); }
+.chart-legend h3 { margin-bottom: 1.5rem; }
+.legend-item { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem; font-family: var(--font-body); font-size: 1.1rem; }
+.legend-swatch { width: 20px; height: 20px; border-radius: 3px; flex-shrink: 0; }
+.sketch-chart { width: 100%; height: auto; }
+
+/* ===== 三卡特性 ===== */
+.three-col-layout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5rem; align-items: start; }
+.feature-postit { padding: 2.5rem 2rem; text-align: center; }
+.feature-postit:nth-child(1) { transform: rotate(-3deg); }
+.feature-postit:nth-child(2) { transform: rotate(2deg); margin-top: 2rem; }
+.feature-postit:nth-child(3) { transform: rotate(-1deg); }
+.feature-icon {
+    width: 60px; height: 60px; margin: 0 auto 1.5rem;
+    border: 3px solid var(--ink); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    /* font-family/font-weight/font-synthesis 统一由上面 h1,h2,h3,.feature-icon,.stat-value,
+       .compare-vs 那条合并规则提供，这里不重复声明，避免漏加 font-synthesis: none。 */
+}
+.feature-postit h3 { margin-bottom: 1rem; font-size: 1.4rem; }
+
+/* ===== 时间线 ===== */
+.timeline-layout { display: flex; flex-direction: column; gap: 2rem; max-width: 900px; margin: 0 auto; }
+.timeline-row { display: flex; align-items: stretch; gap: 2rem; }
+.timeline-row:nth-child(even) { flex-direction: row-reverse; }
+.timeline-node { padding: 2rem; min-width: 200px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+.timeline-connector { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+.timeline-connector svg { width: 100%; height: 60px; }
+.timeline-content { padding: 2rem; flex: 1; }
+.timeline-content h3 { margin-bottom: 0.5rem; }
+.phase-label { font-family: var(--font-hand); font-size: 1.2rem; margin-top: 0.5rem; }
+
+/* ===== 图文两栏 ===== */
+.imgtext-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
+.photo-frame { background: #fff; padding: 1rem; box-shadow: 2px 3px 15px var(--shadow); transform: rotate(-2deg); }
+.photo-frame .photo-inner {
+    width: 100%; aspect-ratio: 4/3;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 50%, #ced4da 100%);
+    display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
+}
+.photo-placeholder { font-size: 1.5rem; color: var(--ink-light); opacity: 0.4; z-index: 1; }
+.text-cluster { position: relative; }
+.main-text-postit { padding: 2.5rem; transform: rotate(1deg); margin-bottom: 1.5rem; }
+.mini-note { position: absolute; bottom: -20px; right: -20px; padding: 1rem 1.5rem; transform: rotate(5deg); font-family: var(--font-hand); font-size: 1.3rem; z-index: 2; }
+
+/* ===== 数据图（donut/pie，白卡 + 内联 SVG + 关键数字）===== */
+.diagram-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
+.diagram-canvas { background: #fff; padding: 2.5rem; box-shadow: 2px 3px 15px var(--shadow); transform: rotate(-1deg); display: flex; flex-direction: column; align-items: center; }
+.diagram-canvas h3 { margin-bottom: 2rem; text-align: center; }
+.diagram-note { padding: 2rem; transform: rotate(2deg); }
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px dashed rgba(45, 42, 38, 0.2); }
+.stat-value { font-size: 1.8rem; color: var(--ink); }
+.stat-label { font-family: var(--font-body); font-size: 1.1rem; color: var(--ink-light); }
+
+/* ===== 对比两栏 ===== */
+.compare-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: stretch; max-width: 1000px; margin: 0 auto; position: relative; }
+.compare-postit { padding: 3rem; position: relative; }
+.compare-postit.left { transform: rotate(-2deg); }
+.compare-postit.right { transform: rotate(2deg); }
+.compare-vs {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 60px; height: 60px; background: var(--ink); color: var(--paper);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    z-index: 10; box-shadow: 0 2px 8px var(--shadow-deep);
+}
+.compare-postit h3 { text-align: center; margin-bottom: 1.5rem; padding-bottom: 0.8rem; border-bottom: 3px solid var(--ink); }
+.compare-list { list-style: none; padding: 0; }
+.compare-list li { font-family: var(--font-body); font-size: 1.1rem; padding: 0.8rem 0; line-height: 1.5; border-bottom: 1px solid rgba(45, 42, 38, 0.1); }
+.compare-list li:last-child { border-bottom: none; }
+
+/* ===== 收尾页 ===== */
+.closing-cluster { position: relative; text-align: center; }
+.closing-main { display: inline-block; padding: 3rem 5rem; transform: rotate(-1deg); }
+.closing-main h2 { font-size: clamp(2.5rem, 5vw, 4rem); }
+.closing-accent-1 { position: absolute; top: -50px; left: -80px; padding: 1.5rem; transform: rotate(-12deg); font-family: var(--font-hand); font-size: 1.4rem; z-index: 2; }
+.closing-accent-2 { position: absolute; bottom: -40px; right: -60px; padding: 1.5rem 2rem; transform: rotate(8deg); z-index: 2; }
+
+/* 装饰性 SVG 涂鸦——圆圈/波浪/三角/线条，角落点缀，0.15 透明度 */
+.doodle { position: absolute; z-index: 0; opacity: 0.15; pointer-events: none; }
+.doodle-circle { border: 3px solid var(--ink); border-radius: 50%; }
+
+/* ===== 页码指示器（改动 2 新增：Scatterbrain 原系统没有常驻 chrome，这里补一个
+   贴合便利贴美学的角标——右下角一张迷你 Caveat 手写体便利贴，钉一个金色图钉，
+   写 "当前页 / 总页数"，不用通用进度条/圆点这类"现代 App 感"的组件）===== */
+.page-tag {
+    position: fixed;
+    right: 28px; bottom: 22px;
+    z-index: 1000;
+    padding: 0.5rem 1.1rem;
+    background: var(--yellow);
+    box-shadow: 2px 3px 12px var(--shadow), 0 1px 3px var(--shadow-deep);
+    transform: rotate(-4deg);
+    font-family: var(--font-hand);
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--ink);
+    pointer-events: none;
+}
+.page-tag::before {
+    content: '';
+    position: absolute; top: -10px; left: 50%;
+    transform: translateX(-50%);
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffd43b, #f59f00);
+    box-shadow: 0 2px 3px var(--shadow-deep);
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+    .two-col-layout, .chart-layout, .imgtext-layout, .diagram-layout, .compare-layout { grid-template-columns: 1fr; }
+    .three-col-layout { grid-template-columns: 1fr; }
+    .timeline-row, .timeline-row:nth-child(even) { flex-direction: column; }
+    .side-note { position: relative; right: auto; top: auto; margin-top: 2rem; }
+    .compare-vs { position: relative; left: auto; top: auto; transform: none; margin: 1rem auto; }
+}
+
+@media print {
+    .slide { page-break-after: always; min-height: 100vh; }
+    .page-tag { display: none; }
+}
+</style>
+</head>
+<body>
+<!-- 以下 body 结构仅供参考：展示 Scatterbrain 几种常见组合（标题页/两栏要点页/图表页），
+     正文示例内容生成时必须替换为本轮真实会议内容，不要照抄。 -->
+<div class="presentation">
+
+  <section class="slide bg-cork slide-title active">
+    <div class="slide-content">
+      <div class="title-cluster">
+        <div class="post-it post-it-yellow main-title-postit pin tape">
+          <h1>会议实时 Slides</h1>
+          <p class="handwritten" style="margin-top: 0.5rem; color: var(--ink-light);">跟随讨论自动更新 · 示例标题（生成时替换成本场会议主题）</p>
+        </div>
+        <div class="post-it post-it-blue title-accent-1 pin-blue">记得钉住这条！</div>
+        <div class="post-it post-it-pink title-accent-2 pin">要点 & 待办</div>
+      </div>
+      <p class="subtitle-text">示例副标题——写"内容整理中，会跟着讨论持续更新"（第一次占位生成时用这句）。</p>
+    </div>
+    <svg class="doodle" style="top: 10%; left: 5%; width: 100px; height: 100px;" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="40" stroke="#2d2a26" stroke-width="3" fill="none" opacity="0.15"/>
+    </svg>
+    <div class="page-tag">1 / 3</div>
+  </section>
+
+  <section class="slide bg-paper">
+    <div class="slide-content">
+      <div class="two-col-layout">
+        <div class="post-it post-it-blue col-postit pin-blue" style="transform: rotate(-2deg);">
+          <span class="label">要点</span>
+          <h3 style="margin-top: 1rem;">示例议题标题</h3>
+          <p>示例内容——生成时替换为本轮实际讨论要点。</p>
+          <ul style="margin-top: 1rem;">
+            <li>示例分点一——如实反映讨论进展，没有结论就写"讨论中，暂无结论"</li>
+            <li>示例分点二</li>
+          </ul>
+        </div>
+        <div class="post-it post-it-white col-postit" style="transform: rotate(1deg); border: 2px solid var(--ink);">
+          <span class="label">结论 / 待办</span>
+          <h3 style="margin-top: 1rem;">示例结论标题</h3>
+          <p>示例内容——没有真正的结论就不要编。</p>
+        </div>
+      </div>
+    </div>
+    <svg class="doodle" style="bottom: 10%; right: 5%; width: 120px; height: 60px;" viewBox="0 0 120 60">
+      <path d="M10 30 Q40 10, 75 30 T110 30" stroke="#2d2a26" stroke-width="3" fill="none" opacity="0.15"/>
+    </svg>
+    <div class="page-tag">2 / 3</div>
+  </section>
+
+  <section class="slide bg-warm">
+    <div class="slide-content">
+      <div class="chart-layout">
+        <div class="chart-container pin tape">
+          <h3 style="text-align: center; margin-bottom: 2rem;">示例数据图标题</h3>
+          <svg class="sketch-chart" viewBox="0 0 400 250" style="max-height: 300px;">
+            <line x1="50" y1="200" x2="380" y2="200" stroke="#c9b8a0" stroke-width="1" stroke-dasharray="4"/>
+            <rect x="70" y="120" width="50" height="80" fill="#ffe066" stroke="#2d2a26" stroke-width="2" rx="4"/>
+            <rect x="140" y="90" width="50" height="110" fill="#a5d8ff" stroke="#2d2a26" stroke-width="2" rx="4"/>
+            <rect x="210" y="60" width="50" height="140" fill="#ffc9c9" stroke="#2d2a26" stroke-width="2" rx="4"/>
+            <text x="95" y="225" text-anchor="middle" font-family="Zilla Slab, Noto Sans SC" font-size="14" fill="#5c5750">示例1</text>
+            <text x="165" y="225" text-anchor="middle" font-family="Zilla Slab, Noto Sans SC" font-size="14" fill="#5c5750">示例2</text>
+            <text x="235" y="225" text-anchor="middle" font-family="Zilla Slab, Noto Sans SC" font-size="14" fill="#5c5750">示例3</text>
+            <line x1="50" y1="200" x2="380" y2="200" stroke="#2d2a26" stroke-width="2"/>
+            <line x1="50" y1="200" x2="50" y2="20" stroke="#2d2a26" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="chart-legend post-it post-it-green pin-green">
+          <h3>关键数字</h3>
+          <div class="stat-row"><span class="stat-label">示例指标</span><span class="stat-value">示例值</span></div>
+          <p class="handwritten" style="margin-top: 1.5rem; border-top: 2px solid var(--ink); padding-top: 1rem;">示例——没有真实数据时不要编数字。</p>
+        </div>
+      </div>
+    </div>
+    <div class="page-tag">3 / 3</div>
+  </section>
+
+</div>
+
+<script>
+  // 页面翻页导航：方向键 / 空格 / PgUp / PgDn / Home / End / 触摸滑动 / 鼠标滚轮，
+  // 纯 JS 无依赖，来自 Scatterbrain 原模板，原样保留不改逻辑。
+  // 2026-07-24 改动：把"页码指示器更新"和"智能自动刷新"合并进同一个闭包，
+  // 跟 go()/current 共享同一份状态，避免出现两份互不相通的 current 变量。
+  (function () {
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const total = slides.length;
+    const pageTags = Array.from(document.querySelectorAll('.page-tag'));
+
+    // 翻页时把当前页码 / 总页数写进所有 .page-tag 角标（同一份 HTML 里理论上只有一个，
+    // 但保留 forEach 以防某次生成多放了几个）。
+    function updatePageTag() {
+      pageTags.forEach(tag => { tag.textContent = `${current + 1} / ${total}`; });
+    }
+
+    let current = slides.findIndex(s => s.classList.contains('active'));
+    if (current < 0) current = 0;
+
+    // 刷新后恢复上次停留的页码，不然每次自动刷新都会跳回第一页打断正在看的人。
+    try {
+      const saved = parseInt(sessionStorage.getItem('sera-slides-current'), 10);
+      if (Number.isFinite(saved) && saved >= 0 && saved < total) current = saved;
+    } catch (e) { /* sessionStorage 不可用时忽略，退回默认页 */ }
+
+    slides.forEach((s, i) => s.classList.toggle('active', i === current));
+    updatePageTag();
+
+    function go(n) {
+      n = Math.max(0, Math.min(total - 1, n));
+      if (n === current) return;
+      slides[current].classList.remove('active');
+      slides[n].classList.add('active');
+      current = n;
+      updatePageTag();
+      window.scrollTo(0, 0);
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        go(current + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        go(current - 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        go(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        go(total - 1);
+      }
+    });
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    document.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].clientX;
+      touchStartY = e.changedTouches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) < 50 && Math.abs(dy) < 50) return;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        go(current + (dx < 0 ? 1 : -1));
+      } else {
+        go(current + (dy < 0 ? 1 : -1));
+      }
+    }, { passive: true });
+
+    let wheelLocked = false;
+    document.addEventListener('wheel', e => {
+      if (wheelLocked) return;
+      const primary = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (Math.abs(primary) < 5) return;
+      go(current + (primary > 0 ? 1 : -1));
+      wheelLocked = true;
+      setTimeout(() => { wheelLocked = false; }, 700);
+    }, { passive: true });
+
+    // 智能自动刷新（改动 3）：服务器上的这个文件会被后台内容驱动地重新生成，浏览器不会
+    // 自己感知到文件变了。这里不再用"定时无脑 reload"（哪怕内容没变也会刷新、闪一下、
+    // 掉页码），改成轮询 HEAD 请求拿 Last-Modified 头，真的检测到文件变了才刷新；没变
+    // 就什么都不做，避免打断正在看的人。
+    (function () {
+      let lastModified = null;
+      async function checkForUpdate() {
+        try {
+          const res = await fetch(location.href, { method: 'HEAD', cache: 'no-store' });
+          const lm = res.headers.get('Last-Modified');
+          if (lastModified === null) {
+            lastModified = lm;
+          } else if (lm && lm !== lastModified) {
+            try { sessionStorage.setItem('sera-slides-current', String(current)); } catch (e) {}
+            location.reload();
+          }
+        } catch (e) { /* 网络抖动，跳过这次，下个 tick 再试 */ }
+      }
+      setInterval(checkForUpdate, 5000);
+    })();
+  })();
+</script>
+</body>
+</html>
