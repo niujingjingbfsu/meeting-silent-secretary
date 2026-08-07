@@ -76,8 +76,6 @@ async def run(meeting_no: str, config_path: str):
     client.owner_name_variants = tuple(config.get("owner_name_variants") or ())
     if config.get("remote_workdir"):
         client.remote_workdir = config["remote_workdir"]
-    client.public_base_url = config.get("public_base_url") or None
-    client.remote_publish_target = config.get("remote_publish_target") or None
 
     print("[secretary-ear] 入会中 ...")
     meeting_id = await _join(meeting_no)

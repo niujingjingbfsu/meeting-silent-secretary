@@ -18,7 +18,4 @@ opening_line: ""            # 入会后发的第一条弹幕，留空则用内�
 owner_open_id: ""            # 部署者本人的飞书 open_id，填了才会有"会里提到你"的私聊提醒
 owner_name_variants: []      # 部署者姓名的各种变体，比如 ["张三", "小张"]，配合上面一项使用
 
-remote_workdir: ""           # 生成子进程的工作目录 + 产出物本地根目录，留空用当前目录
-public_base_url: ""          # 产出物对外可访问的根地址，比如 "https://your-domain.com/live"；
-                              # 留空则持续技能只在本地生成文件，弹幕里只说"已保存本地"不给链接
-remote_publish_target: ""    # 形如 "user@host:/path"，配置了才会把产出物 scp 推到这台服务器
+remote_workdir: ""           # 判断层/任务子进程的工作目录，留空用当前目录

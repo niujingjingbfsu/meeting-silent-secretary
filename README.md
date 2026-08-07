@@ -1,9 +1,7 @@
 # 会中无声助手（Meeting Silent Secretary）
 
 一个飞书（Lark/Feishu）会中机器人能力：全程不语音发言、不打断会议，只在后台听；被明确
-叫到名字时才执行一次性任务，结果通过会中弹幕发出来；支持 6 个可开关的"持续性技能"
-（脑暴看板/口述建原型/会议纪要/实时Slides/分享要点卡片/持续答弹幕），开启后常驻运行、
-随讨论持续刷新内容，产出可访问的 HTML 页面。
+叫到名字时才执行一次性任务（根据语音指令干活），结果通过会中弹幕发出来。
 
 核心特点：**不接任何第三方语音识别（ASR）厂商**，靠飞书会议自带的服务端逐字稿
 （`transcript_received` 事件）当"耳朵"——每句话自带准确的说话人身份，让"待办责任人
@@ -22,7 +20,7 @@
    不要自己猜 scope 名字。
 2. 本机安装并鉴权好 [`lark-cli`](https://github.com/)（`--as bot` 身份可用）。
 3. 本机能运行 `claude`（Claude Code CLI），带 `--dangerously-skip-permissions` 权限——
-   判断层常驻会话和每个一次性任务/持续技能的生成都靠它。
+   判断层常驻会话和每个一次性任务的生成都靠它。
 4. Python 3.9+，`pip install -r requirements.txt`（只需要 `pyyaml`）。
 5. 常驻的 asyncio 事件循环——这个进程要作为长期运行的服务，不是一次性脚本。
 
@@ -52,9 +50,7 @@ python3 secretary_transcript_main.py --meeting-no <9位会议号> --config confi
 | `judge_model` / `judge_backend` | 建议填 | 判断层用的模型/后端 |
 | `reply_chat_id` | 可选 | 弹幕发送失败时的兜底群 |
 | `owner_open_id` / `owner_name_variants` | 可选 | 填了才有"会里提到你"私聊提醒 |
-| `remote_workdir` | 可选 | 生成内容的工作目录，留空用当前目录 |
-| `public_base_url` | 可选 | 产出物对外访问的根地址，留空则只本地保存 |
-| `remote_publish_target` | 可选 | `user@host:/path`，配置了才会 scp 发布产出物 |
+| `remote_workdir` | 可选 | 判断层/任务子进程的工作目录，留空用当前目录 |
 
 ## 架构速览
 
@@ -62,7 +58,7 @@ python3 secretary_transcript_main.py --meeting-no <9位会议号> --config confi
 入会 → 判断层预热(_init_judge)
      → 轮询 _meeting_chat_loop 拉 transcript_received/会中弹幕/投屏文档事件
      → 喂进 _feed_host_transcript（去重+防抖）
-     → 判断层输出一个动作标签（PASS / DO: / 结论: / 技能开关 / …)
+     → 判断层输出一个动作标签（PASS / DO: / 结论: / LEAVE: / BARRAGE_REPLY: / RECONNECT)
      → DO 由 _dispatch_secretary_do 派发一个带记忆+工具的子 Claude 去真正执行
      → 子任务完成后自己发会中弹幕（结果 + ✅/❌完成标记）
 ```
@@ -71,7 +67,8 @@ python3 secretary_transcript_main.py --meeting-no <9位会议号> --config confi
 
 ## 已知限制
 
-- **议程跟进技能未实现**：判断层不会识别"帮我盯一下议程"这类请求，没有对应的持续技能。
+- **只做"听指令→干活→回结果"这一件事**：不包含脑暴看板/实时Slides/持续记纪要等常驻
+  生成型能力，那是完全不同的一套更大范围的能力，本包刻意不含。
 - **不支持语音人设切换**：这个角色设计上就是"不说话"，没有切换成会说话角色的能力
   （那需要接入完全独立的实时语音/TTS系统）。
 - **RECONNECT 只能提示，不能真的自动重连**：这个角色没有音频连接，收到"重连"类请求
