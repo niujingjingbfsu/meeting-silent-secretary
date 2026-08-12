@@ -36,6 +36,20 @@ cp config_silent.example.yaml config_silent.yaml
 # 编辑 config_silent.yaml：至少确认 bot_name/bot_name_alt（唤醒词）
 ```
 
+装完先跑一遍检测脚本，看是不是所有前置条件都满足：
+
+```bash
+python3 onboarding_check.py
+# 已经换掉出厂默认 Claude Code、接了自己的 agent 的话：
+python3 onboarding_check.py --no-claude-check
+```
+
+会逐层检查本地环境（Python/pyyaml）→ lark-cli 与 bot 身份 → 执行层大脑（默认 Claude
+CLI）→ 配置文件，每项标 ✅/❌ 并给出具体修复命令。**飞书 VC Agent 会中权限**这一层
+没有已知的零副作用方式能提前验证（读接口都要内部 `meeting_id`，只有真的入会才能拿
+到），脚本会明确标成 ❓ 而不是假装通过——这一层只能靠真实冒烟测试验证，见下面"运行"
+一节，报错跟着 lark-cli 自带的 hint 处理。
+
 ## 运行
 
 ```bash
