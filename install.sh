@@ -6,7 +6,8 @@
 #   # 或指定安装目录：
 #   curl -fsSL .../install.sh | bash -s -- my-secretary-dir
 #
-# 做的事：clone 仓库 → 装 Python 依赖 → 生成配置模板 → 跑一遍 onboarding_check.py。
+# 做的事：装前探测 → clone 仓库 → 装 Python 依赖 → 生成配置模板 → 跑一遍
+# onboarding_check.py → 写一份 INSTALL_REPORT.md（结果+下一步指引）。
 # 不会自动帮你建飞书应用/开权限——那两步官方就是控制台交互设计，这个安装器不碰。
 set -euo pipefail
 
@@ -18,9 +19,20 @@ if [ -d "$TARGET_DIR" ]; then
   exit 1
 fi
 
-command -v git >/dev/null 2>&1 || { echo "❌ 没找到 git，先装 git 再重跑。" >&2; exit 1; }
-command -v python3 >/dev/null 2>&1 || { echo "❌ 没找到 python3，先装 Python 3.9+ 再重跑。" >&2; exit 1; }
+echo "=== 装前探测 ==="
+preflight_ok=true
+command -v git >/dev/null 2>&1 && echo "✅ git 已安装" || { echo "❌ 没找到 git"; preflight_ok=false; }
+command -v python3 >/dev/null 2>&1 && echo "✅ python3 已安装" || { echo "❌ 没找到 python3"; preflight_ok=false; }
+curl -sS --max-time 6 -o /dev/null https://github.com \
+  && echo "✅ 能连通 github.com" || { echo "❌ 连不上 github.com"; preflight_ok=false; }
+curl -sS --max-time 6 -o /dev/null https://open.feishu.cn \
+  && echo "✅ 能连通 open.feishu.cn" || { echo "❌ 连不上 open.feishu.cn"; preflight_ok=false; }
+if ! $preflight_ok; then
+  echo "❌ 装前探测有没过的项，先解决再重跑本脚本。" >&2
+  exit 1
+fi
 
+echo ""
 echo "==> 克隆仓库到 ./$TARGET_DIR"
 git clone --depth 1 "$REPO_URL" "$TARGET_DIR"
 cd "$TARGET_DIR"
@@ -48,12 +60,48 @@ if [ ! -f config_silent.yaml ]; then
   echo "==> 已生成 config_silent.yaml（模板），记得编辑 bot_name/bot_name_alt 再用"
 fi
 
-echo "==> 跑环境自检（onboarding_check.py）"
-$PY onboarding_check.py || true
+echo "==> 跑环境自检（onboarding_check.py）并生成安装报告"
+set +e
+$PY onboarding_check.py --dump-diagnostics diagnostics.json > onboarding_output.log 2>&1
+CHECK_EXIT=$?
+set -e
+cat onboarding_output.log
+
+{
+  echo "# 安装报告"
+  echo ""
+  echo "- 安装时间：$(date '+%Y-%m-%d %H:%M:%S %Z' 2>/dev/null || date)"
+  echo "- 安装目录：$(pwd)"
+  echo "- 使用的 Python：$PY"
+  if [ $CHECK_EXIT -eq 0 ]; then
+    echo "- 自检结果：能自动验证的项都过了（可能仍有 ❓ 需要真实冒烟测试，见下方原文）"
+  else
+    echo "- 自检结果：有 ❌ 未解决，见下方原文"
+  fi
+  echo ""
+  echo "## 自检原始输出"
+  echo '```'
+  cat onboarding_output.log
+  echo '```'
+  echo ""
+  echo "## 下一步"
+  if [ $CHECK_EXIT -ne 0 ]; then
+    echo "1. 按上面 ❌ 逐条修，改完重跑：\`$PY onboarding_check.py\`"
+    echo "2. 全部通过（或只剩 ❓）后再往下走。"
+  else
+    echo "1. 编辑 \`config_silent.yaml\`，确认 \`bot_name\`/\`bot_name_alt\`（唤醒词）填的是你自己 bot 的称呼。"
+    echo "2. 找一场你自己能加入的真实进行中的会议。"
+    echo "3. 跑：\`$PY secretary_transcript_main.py --meeting-no <会议号> --config config_silent.yaml\`"
+    echo "4. 会里喊配置的唤醒词说一件具体的事，确认收到\"收到任务N\"弹幕、以及任务完成后带 ✅/❌ 的结果弹幕。"
+  fi
+  echo ""
+  echo "卡住了？把 \`diagnostics.json\` 发给能帮你排查的人，里面不含任何密钥/token。"
+} > INSTALL_REPORT.md
 
 echo ""
 echo "==================================================================="
 echo "安装到：$(pwd)"
+echo "详细报告+下一步指引已写入：$(pwd)/INSTALL_REPORT.md"
 if [ "$PY" != "python3" ]; then
   echo "依赖装在本地虚拟环境里，后面所有命令都要用 $PY 而不是 python3，比如："
   echo "  $PY onboarding_check.py"

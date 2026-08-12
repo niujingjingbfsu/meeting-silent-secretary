@@ -48,14 +48,23 @@
 
 ## 安装
 
-一条命令（clone + 装依赖 + 生成配置模板 + 跑一遍自检；系统 Python 是
-externally-managed 的话会自动改用本地 `.venv`，不动系统 Python）：
+装之前，先花几秒确认基础环境够不够（不下载任何东西，纯只读检查）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/niujingjingbfsu/meeting-silent-secretary/main/preflight.sh | bash
+```
+
+确认过了再装。一条命令（clone + 装依赖 + 生成配置模板 + 跑一遍自检 + 写安装报告；
+系统 Python 是 externally-managed 的话会自动改用本地 `.venv`，不动系统 Python）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/niujingjingbfsu/meeting-silent-secretary/main/install.sh | bash
 ```
 
-或者手动：
+装完会在安装目录下生成 `INSTALL_REPORT.md`——里面是自检原始结果+具体的下一步指引，
+不用回来翻这份 README 找下一步该干什么。
+
+或者手动装：
 
 ```bash
 git clone https://github.com/niujingjingbfsu/meeting-silent-secretary.git
@@ -63,12 +72,6 @@ cd meeting-silent-secretary
 pip install -r requirements.txt
 cp config_silent.example.yaml config_silent.yaml
 # 编辑 config_silent.yaml：至少确认 bot_name/bot_name_alt（唤醒词）
-```
-
-用一条命令的方式装的话，`install.sh` 已经自动跑过一遍自检脚本了；手动装的话，装完自己
-跑一遍，看是不是所有前置条件都满足：
-
-```bash
 python3 onboarding_check.py
 # 已经换掉出厂默认 Claude Code、接了自己的 agent 的话：
 python3 onboarding_check.py --no-claude-check

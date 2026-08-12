@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+.venv/
+config_silent.yaml
+diagnostics.json
+onboarding_output.log
+INSTALL_REPORT.md
