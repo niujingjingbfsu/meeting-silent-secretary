@@ -48,17 +48,32 @@
 
 ## 安装
 
+一条命令（clone + 装依赖 + 生成配置模板 + 跑一遍自检；系统 Python 是
+externally-managed 的话会自动改用本地 `.venv`，不动系统 Python）：
+
 ```bash
+curl -fsSL https://raw.githubusercontent.com/niujingjingbfsu/meeting-silent-secretary/main/install.sh | bash
+```
+
+或者手动：
+
+```bash
+git clone https://github.com/niujingjingbfsu/meeting-silent-secretary.git
+cd meeting-silent-secretary
+pip install -r requirements.txt
 cp config_silent.example.yaml config_silent.yaml
 # 编辑 config_silent.yaml：至少确认 bot_name/bot_name_alt（唤醒词）
 ```
 
-装完先跑一遍检测脚本，看是不是所有前置条件都满足：
+用一条命令的方式装的话，`install.sh` 已经自动跑过一遍自检脚本了；手动装的话，装完自己
+跑一遍，看是不是所有前置条件都满足：
 
 ```bash
 python3 onboarding_check.py
 # 已经换掉出厂默认 Claude Code、接了自己的 agent 的话：
 python3 onboarding_check.py --no-claude-check
+# 装不通、需要找人帮忙排查的话，额外打包一份诊断信息（不含任何密钥/token）：
+python3 onboarding_check.py --dump-diagnostics report.json
 ```
 
 会逐层检查本地环境（Python/pyyaml）→ lark-cli 与 bot 身份 → 执行层大脑（默认 Claude

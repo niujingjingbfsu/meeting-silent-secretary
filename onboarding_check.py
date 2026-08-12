@@ -7,8 +7,14 @@
 
 用法：
     python3 onboarding_check.py [--config config_silent.yaml] [--no-claude-check]
+        [--dump-diagnostics report.json]
+    --dump-diagnostics：把检测结果打包成一份 JSON（不含任何密钥/token，只有环境信息+
+    每项检查的结论原文），装不通时把这个文件发给能帮你排查的人，不用来回口述"我环境
+    是什么/报错是什么"。
 """
 import argparse
+import json
+import platform
 import shutil
 import subprocess
 import sys
@@ -156,6 +162,8 @@ def main():
     ap.add_argument("--config", default="config_silent.yaml")
     ap.add_argument("--no-claude-check", action="store_true",
                      help="已接入自定义 TaskExecutor（不用 Claude CLI）时加这个跳过检测")
+    ap.add_argument("--dump-diagnostics", default="",
+                     help="额外把检测结果写成一份可分享的诊断 JSON，路径由这个参数指定")
     args = ap.parse_args()
 
     sections = [
@@ -169,23 +177,42 @@ def main():
 
     any_fail = False
     any_unknown = False
+    diag_sections = []
     for title, items in sections:
         print(f"\n=== {title} ===")
         fail = report(items)
         any_fail = any_fail or fail
         any_unknown = any_unknown or any(lvl == UNKNOWN for lvl, _, _ in items)
+        diag_sections.append({
+            "section": title,
+            "checks": [{"level": lvl, "title": t, "detail": d} for lvl, t, d in items],
+        })
 
     print("\n" + "=" * 40)
     if any_fail:
         print(f"{FAIL} 还有没解决的问题，按上面的提示逐条修，改完重跑本脚本。")
-        sys.exit(1)
+        overall = FAIL
     elif any_unknown:
         print(f"{UNKNOWN} 能自动检测的都过了，但还有几项没法零副作用预检，"
               "按上面提示做真实冒烟测试再确认。")
-        sys.exit(0)
+        overall = UNKNOWN
     else:
         print(f"{PASS} 全部检测通过。")
-        sys.exit(0)
+        overall = PASS
+
+    if args.dump_diagnostics:
+        report_data = {
+            "overall": overall,
+            "python_version": sys.version.split()[0],
+            "platform": platform.platform(),
+            "sections": diag_sections,
+        }
+        Path(args.dump_diagnostics).write_text(
+            json.dumps(report_data, ensure_ascii=False, indent=2))
+        print(f"\n诊断包已写入 {args.dump_diagnostics}（不含密钥/token，"
+              "可以直接发给帮你排查的人）")
+
+    sys.exit(0 if overall != FAIL else 1)
 
 
 if __name__ == "__main__":
