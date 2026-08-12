@@ -740,6 +740,7 @@ class MeetingSecretaryClient:
         spoken_answer = ""
         task_done = None
         deliverable_link = ""
+        error_detail = ""
         try:
             out_text = await self.task_executor.run(instr, cwd=self.remote_workdir)
             ok = True
@@ -769,20 +770,36 @@ class MeetingSecretaryClient:
             ok = False
             barrage_ok = False
             spoken_answer = ""
+            error_detail = str(e)[:200]
             print(f"[secretary] 异步任务失败: {e}")
         finally:
             self._async_running = max(0, self._async_running - 1)
+            # 2026-08-12 真实bug：子agent自己没能确认发出弹幕时（进程崩/超时/它自己忘了发），
+            # 下面这行 line 只喂给 task_board/meeting_log（仪表盘/内部记录），会场里的人根本
+            # 看不到——之前的注释写着"原因发到群里了"，但秘书角色 self._mouth 恒为 None，
+            # 唯一真的会发到会场的出口只有 barrage，这里从没真的调用过，等于承诺了没兑现。
+            # 现在改成：只要没法确认"子agent自己的弹幕已经把原因带到会场"，就由这里兜底
+            # 主动发一条真实弹幕，不能让失败原因只停留在内部日志里。
             if not ok:
-                line = f"「{task_label}」没弄成，原因发到群里了。"
+                line = f"「{task_label}」没弄成：{error_detail or '未知异常'}"
+            elif not barrage_ok:
+                line = (spoken_answer or f"「{task_label}」执行完了但没确认弹幕发出去，"
+                        f"任务本身{'算完成' if task_done else '没真正完成'}。")
             elif task_done is False:
-                line = spoken_answer or f"「{task_label}」没能真正完成，原因发到弹幕里了。"
+                line = spoken_answer or f"「{task_label}」没能真正完成，原因已经发到弹幕里了。"
             elif task_done is True:
-                line = spoken_answer or (f"「{task_label}」办完了，弹幕里发了结果。" if barrage_ok
-                                          else f"「{task_label}」办完了，弹幕没发出去，结果发在群里了。")
+                line = spoken_answer or f"「{task_label}」办完了，弹幕里发了结果。"
             elif spoken_answer:
                 line = spoken_answer
             else:
                 line = f"「{task_label}」处理完了，具体结果你看一下弹幕。"
+            # barrage_ok=True 时子agent自己已经按契约把「✅/❌ + 原因」发进了会场弹幕，
+            # 不用重复发；只有确认不了子agent自己发过弹幕的情况（进程崩/超时/它自己漏发），
+            # 才由这里兜底主动发一条，保证失败原因一定会真的出现在会场里，不止留在内部日志。
+            if not barrage_ok:
+                fallback_prefix = "✅" if (ok and task_done is True) else "❌"
+                fallback_text = f"{fallback_prefix} {line}" if not line.startswith(("✅", "❌")) else line
+                asyncio.ensure_future(self._send_barrage_reply(fallback_text))
             if task_id:
                 try:
                     import task_board
