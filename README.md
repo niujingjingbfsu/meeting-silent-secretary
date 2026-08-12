@@ -10,21 +10,38 @@
 
 ## 前置条件
 
-1. 一个飞书自建应用（bot），已开通 VC（视频会议）Agent 会中能力——包括：
+1. **一个飞书自建应用（bot）**。没有的话先去开放平台建：登录
+   [open.feishu.cn](https://open.feishu.cn)（或 [open.larksuite.com](https://open.larksuite.com)
+   海外版）开发者后台 → 创建「企业自建应用」→ 在应用能力里添加「机器人」→ 拿到
+   `App ID` / `App Secret`（后面第2步要用）。
+2. **该应用已开通 VC（视频会议）Agent 会中能力**——包括：
    - `vc:meeting.bot.join:write`（入会/离会）
    - `vc:meeting.meetingevent:read`（拉取会中事件：逐字稿/弹幕/投屏）
    - 发送会中消息所需的 scope
-   
-   这块能力目前处于开放/内测节奏中，具体以你租户当前的开通状态为准；如果 `lark-cli`
-   调用报 `missing required scope(s)` 之类的错误，跟着 CLI 自带的错误提示（hint）处理，
-   不要自己猜 scope 名字。
-2. 本机安装并鉴权好 [`lark-cli`](https://github.com/)（`--as bot` 身份可用）。
-3. 一个能真正执行任务的"大脑"——**默认是本机的 `claude`（Claude Code CLI，带
+
+   在应用后台的「权限管理」里申请这几个 scope。这块能力目前处于开放/内测节奏中，具体
+   以你租户当前的开通状态为准；如果 `lark-cli` 调用报 `missing required scope(s)` 之类
+   的错误，跟着 CLI 自带的错误提示（hint）处理，不要自己猜 scope 名字。
+3. **本机安装并绑定好 [`lark-cli`](https://github.com/larksuite/cli)**（bot 身份可用）：
+   ```bash
+   # 用第1步拿到的 App ID / App Secret 绑定（Secret 走 stdin，不进 shell 历史）
+   echo "<你的 App Secret>" | lark-cli config init --app-id <你的 App ID> --app-secret-stdin
+   ```
+   跑完 `lark-cli auth status --json`，`identities.bot.status` 应该是 `"ready"`。
+4. **一个能真正执行任务的"大脑"**——**默认是本机的 `claude`（Claude Code CLI，带
    `--dangerously-skip-permissions`）**，判断层常驻会话和每个一次性任务都靠它。
-   **如果你想接别的 agent（不是 Claude），见下面"接入非 Claude 的 agent"一节**——
-   执行层和判断层都是可插拔的，不是非 Claude 不可，只是出厂默认值是 Claude Code。
-4. Python 3.9+，`pip install -r requirements.txt`（只需要 `pyyaml`）。
-5. 常驻的 asyncio 事件循环——这个进程要作为长期运行的服务，不是一次性脚本。
+   装好二进制**还不够**，必须已经登录/配好可用的 API key（`claude --version` 只能证明
+   二进制存在，不能证明能真的调通模型；实测方式是随便跑一句 `claude -p "1+1"` 看有没
+   有报认证错误）。用默认 Claude 需要本机网络能连通 Anthropic（大部分中国大陆网络环境
+   需要能出海）。**如果你想接别的 agent（不是 Claude），见下面"接入非 Claude 的
+   agent"一节**——执行层和判断层都是可插拔的，不是非 Claude 不可，只是出厂默认值是
+   Claude Code。
+5. Python 3.9+，`pip install -r requirements.txt`（只需要 `pyyaml`）。
+6. 本机网络能连通飞书开放平台（`open.feishu.cn`/`open.larksuite.com`）——这是硬要求，
+   跟用哪个执行层无关。
+
+以上都是运行这个进程本身要满足的条件，不是一个额外要单独搭建的东西——运行方式见下面
+"运行"一节，进程本身就是常驻的（不是跑一次就退出的脚本），会一直挂着直到会议结束。
 
 **不需要**：任何语音/ASR厂商账号（火山引擎/豆包等）——`secretary_client.py` 完全不发起
 任何语音相关的网络请求。

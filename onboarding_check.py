@@ -53,7 +53,7 @@ def check_lark_cli():
     path = shutil.which("lark-cli")
     if not path:
         items.append((FAIL, "lark-cli 未安装/不在 PATH 里",
-                       "先装 lark-cli：https://github.com/larksuite/lark-cli（或你租户内部分发渠道），"
+                       "先装 lark-cli：https://github.com/larksuite/cli（或你租户内部分发渠道），"
                        "装完确认 `lark-cli --version` 能跑通再重跑本脚本。"))
         return items
     items.append((PASS, f"lark-cli 已安装 ({path})", ""))
@@ -76,8 +76,11 @@ def check_lark_cli():
         items.append((FAIL, "bot 身份未就绪，本能力包全程只用 bot 身份，这个必须先解决",
                        f"lark-cli 给的原始提示: {bot.get('message', '(无)')}\n"
                        f"hint: {bot.get('hint', '(无)')}\n"
-                       "一般是没在飞书开放平台创建自建应用/没把 app_id+app_secret 配进 "
-                       "lark-cli，参考 lark-cli 自己的绑定文档处理。"))
+                       "注意：这不是 `lark-cli auth login`（那是给用户身份登录用的）。"
+                       "先在飞书开放平台建自建应用拿到 App ID/Secret，再执行：\n"
+                       "  echo \"<App Secret>\" | lark-cli config init --app-id <App ID> "
+                       "--app-secret-stdin\n"
+                       "跑完重新执行本脚本确认 bot 身份变成 ready。"))
     return items
 
 
@@ -98,10 +101,14 @@ def check_task_executor(skip_claude: bool):
         proc = subprocess.run(["claude", "--version"], capture_output=True,
                                text=True, timeout=15)
         ver = (proc.stdout or proc.stderr).strip()
-        return [(PASS, f"执行层：claude CLI 可用 ({ver})", "")]
     except Exception as e:
         return [(FAIL, "执行层：claude 二进制存在但跑不起来",
                   f"异常: {e}\n跑一遍 `claude --version` 看原始报错。")]
+    return [(PASS, f"执行层：claude 二进制可用 ({ver})", ""),
+            (UNKNOWN, "执行层：是否已登录/能否真的调通模型——这条没法零成本验证",
+              "上面这个✅只证明二进制装好了，不证明已登录/网络能连通 Anthropic。"
+              "自己跑一句 `claude -p \"1+1\"` 确认没报认证/网络错误，别只看这条✅就"
+              "当作执行层已经ready。")]
 
 
 def check_config(config_path: Path):
