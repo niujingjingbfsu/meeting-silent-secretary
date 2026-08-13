@@ -5,3 +5,6 @@ config_silent.yaml
 diagnostics.json
 onboarding_output.log
 INSTALL_REPORT.md
+meeting_log_data/
+task_board_data/
+*.npm-global/

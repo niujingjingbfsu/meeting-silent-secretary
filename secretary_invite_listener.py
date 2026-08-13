@@ -63,10 +63,16 @@ def already_running(meeting_no: str) -> bool:
 
 
 def spawn_secretary(meeting_no: str, config_path: str):
+    """2026-08-13 真实bug：这里如果硬编码 python3，装机时如果 install.sh 的 pip 因为
+    externally-managed 系统环境自动 fallback 到了 .venv（这台机器上就真的触发过），
+    这个监听器本身可能是用 .venv/bin/python3 起的，但 shell 里再起一个新进程调用
+    "python3" 会走 PATH 解析到系统 python3——那个环境里没装 pyyaml，spawn 出来的
+    子进程会静默 ImportError 死掉，而这条路径本来就是脱离终端、看不见输出的后台
+    进程，出问题不容易察觉。改用 sys.executable，保证跟当前解释器用的是同一个。"""
     log_file = f"/tmp/secretary-invite-{meeting_no}.log"
     print(f"🚀 触发自动入会：meeting_no={meeting_no}，日志：{log_file}")
     subprocess.Popen(
-        f"cd {HERE} && setsid nohup python3 secretary_transcript_main.py "
+        f"cd {HERE} && setsid nohup {sys.executable} secretary_transcript_main.py "
         f"--meeting-no {meeting_no} --config {config_path} "
         f"> {log_file} 2>&1 < /dev/null & disown",
         shell=True, executable="/bin/bash")

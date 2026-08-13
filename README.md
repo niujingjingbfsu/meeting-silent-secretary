@@ -97,7 +97,13 @@ python3 secretary_transcript_main.py --meeting-no <9位会议号> --config confi
 
 ### 可选：被邀请入会自动触发
 
-不想每次手动敲会议号的话，跑一个常驻监听器，别人把 bot 拉进会议就自动入会：
+不想每次手动敲会议号的话，跑一个常驻监听器，别人把 bot 拉进会议就自动入会。
+
+⚠️ **用跟主流程同一份 Python/pip**：如果前面装的时候系统 Python 是 externally-managed、
+自动 fallback 用了 `.venv`（`install.sh` 会明确告诉你有没有走这条路），这里也必须用同
+一个 `.venv` 的 `pip`/`python3`，不能突然改用系统的 `pip install`——不然装 `lark-oapi` 和
+跑这个脚本用的是两个不同的 Python 环境，`import` 会失败。走 `.venv` 的话，把下面命令
+里的 `pip`/`python3` 换成 `.venv/bin/pip`/`.venv/bin/python3`：
 
 ```bash
 pip install lark-oapi   # 额外依赖，只有用这个能力才需要
@@ -120,6 +126,7 @@ app_secret 跑通过一次真实的邀请事件（app_secret 我拿不到）—�
 | `reply_chat_id` | 可选 | 弹幕发送失败时的兜底群 |
 | `owner_open_id` / `owner_name_variants` | 可选 | 填了才有"会里提到你"私聊提醒 |
 | `remote_workdir` | 可选 | 判断层/任务子进程的工作目录，留空用当前目录 |
+| `app_id` / `app_secret` | 可选 | 只有用 `secretary_invite_listener.py`（被邀请入会自动触发）才需要，跟 lark-cli 已绑定的凭证是两码事，必须单独填 |
 
 ## 架构速览
 
