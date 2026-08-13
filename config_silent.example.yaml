@@ -9,8 +9,9 @@ judge_api_key: ""           # judge_backend=api 时才需要
 judge_api_model: ""
 judge_base_url: ""
 
-bot_name: "小助手"           # 唤醒词①——建议用中文、ASR/转写容易听准的称呼
-bot_name_alt: "你的Bot正式名字"  # 唤醒词②——bot 在飞书里注册的正式名字，两个都会被判断层认成"在叫我"
+bot_name: "小助手"           # 兜底唤醒词，不改也能直接用
+bot_name_alt: ""             # 可选：想用自己的名字（比如 bot 的正式名字）当唤醒词就填这里，
+                              # 不填就只认 bot_name，两个都填的话两个都能被认成"在叫我"
 
 opening_line: ""            # 入会后发的第一条弹幕，留空则用内置的通用开场白
 

@@ -45,8 +45,9 @@ class MeetingSecretaryClient:
         close/alive）的对象。传了就完全接管判断层后端，忽略下面 judge_backend/judge_api_key
         等配置；不传则沿用默认逻辑（judge_backend="cli"/"api" 二选一，均为 Claude 家族模型）。"""
         self.role = "secretary"
-        self.bot_name = "小助手"          # 主叫名——建议用 ASR/转写容易听准的中文称呼
-        self.bot_name_alt = "Seraphina"   # 备用名——bot 在飞书里注册的正式名字
+        self.bot_name = "小助手"          # 兜底唤醒词，永远有效，不用户配置也能直接用
+        self.bot_name_alt = ""            # 可选：用户自己指定的唤醒词（比如 bot 的正式名字），
+                                           # 留空就只认 bot_name，不强制要求用户填
 
         # 部署者身份（可选）：留空则"提到你"私聊提醒功能自动跳过，不影响其余能力。
         self.owner_open_id = ""
@@ -111,11 +112,16 @@ class MeetingSecretaryClient:
             return
         self._judge_init_started = True
         try:
+            # 2026-08-13 真实bug：bot_name_alt 一直是个只存在于 __init__ 里的死属性，从没
+            # 真正拼进过判断层的 prompt——README/SKILL.md 一直写着"两个都会被认成在叫我"，
+            # 但代码里只有 bot_name 真的生效，bot_name_alt 填什么都没用。这里改成真的把它
+            # 拼进去（留空就不拼，只认 bot_name，不强制用户必须填这第二个名字）。
+            wake_names = "'/'".join([n for n in (self.bot_name, self.bot_name_alt) if n])
             setup = (
                 "你是这场会议的【会议秘书】，会中【绝不语音发言、不打断】，只默默听、按需在群里产出/执行。\n"
                 "我会反复把'会场最近的对话'发给你，每次只做一个判断，严格只回下面之一：\n"
                 "- 还在讨论中 / 没有新结论 / 闲聊寒暄 → 只回：PASS\n"
-                f"- 有人【直接叫你】（喊'{self.bot_name}'/'助手'）去做一件事（查/搜/发/建文档/查日程/总结…）"
+                f"- 有人【直接叫你】（喊'{wake_names}'/'助手'）去做一件事（查/搜/发/建文档/查日程/总结…）"
                 "→ 回：DO: 后跟这件事（把对方原话的诉求转成一句动宾清楚、可直接执行的指令）\n"
                 "- 【务必分清'两人在闲聊商量'和'后面才真正对你说的直接指令'】'会场最近的对话'是一个滑动"
                 "窗口，可能同时装着两人在闲聊商量的内容和后面才真正对你说的直接指令——如果闲聊里提到的"

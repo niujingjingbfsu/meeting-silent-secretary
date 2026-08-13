@@ -71,7 +71,7 @@ git clone https://github.com/niujingjingbfsu/meeting-silent-secretary.git
 cd meeting-silent-secretary
 pip install -r requirements.txt
 cp config_silent.example.yaml config_silent.yaml
-# 编辑 config_silent.yaml：至少确认 bot_name/bot_name_alt（唤醒词）
+# 唤醒词有兜底默认值「小助手」，不改也能直接用；想自定义再编辑 bot_name_alt。
 python3 onboarding_check.py
 # 已经换掉出厂默认 Claude Code、接了自己的 agent 的话：
 python3 onboarding_check.py --no-claude-check
@@ -121,7 +121,8 @@ app_secret 跑通过一次真实的邀请事件（app_secret 我拿不到）—�
 
 | 配置项 | 必填 | 说明 |
 |---|---|---|
-| `bot_name` / `bot_name_alt` | 建议填 | 唤醒词，被明确叫到才响应 |
+| `bot_name` | 有默认值 | 兜底唤醒词，默认「小助手」，不填也能用 |
+| `bot_name_alt` | 可选 | 自定义唤醒词（比如 bot 正式名字），填了两个都能被认成"在叫我" |
 | `judge_model` / `judge_backend` | 建议填 | 判断层用的模型/后端 |
 | `reply_chat_id` | 可选 | 弹幕发送失败时的兜底群 |
 | `owner_open_id` / `owner_name_variants` | 可选 | 填了才有"会里提到你"私聊提醒 |

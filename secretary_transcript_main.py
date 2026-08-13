@@ -71,7 +71,7 @@ async def run(meeting_no: str, config_path: str):
     client.judge_api_model = config.get("judge_api_model", "")
     client.judge_base_url = config.get("judge_base_url", "")
     client.bot_name = config.get("bot_name", "小助手")
-    client.bot_name_alt = config.get("bot_name_alt", "Seraphina")
+    client.bot_name_alt = config.get("bot_name_alt", "")
     client.owner_open_id = config.get("owner_open_id", "")
     client.owner_name_variants = tuple(config.get("owner_name_variants") or ())
     if config.get("remote_workdir"):

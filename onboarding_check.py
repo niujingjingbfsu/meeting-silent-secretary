@@ -165,7 +165,7 @@ def check_config(config_path: Path):
     if not config_path.exists():
         return [(FAIL, f"配置文件 {config_path} 不存在",
                   f"运行：cp config_silent.example.yaml {config_path.name}，"
-                  "再编辑里面的 bot_name/bot_name_alt。")]
+                  "不改也能直接用（兜底唤醒词是「小助手」），想自定义唤醒词再编辑 bot_name_alt。")]
     import yaml
     try:
         cfg = yaml.safe_load(config_path.read_text()) or {}
@@ -173,13 +173,18 @@ def check_config(config_path: Path):
         return [(FAIL, f"配置文件 {config_path} 解析失败", f"YAML 语法错误: {e}")]
 
     items = [(PASS, f"配置文件 {config_path} 存在且能解析", "")]
+    # 2026-08-13 晶晶要求：不强制用户必须自己填一个唤醒词——bot_name 有兜底默认值
+    # "小助手"，不填也能直接用；bot_name_alt 是纯可选的自定义唤醒词，留空就是没有。
     bot_name = (cfg.get("bot_name") or "").strip()
     bot_name_alt = (cfg.get("bot_name_alt") or "").strip()
-    if not bot_name or not bot_name_alt or bot_name_alt == "你的Bot正式名字":
-        items.append((FAIL, "唤醒词 bot_name/bot_name_alt 还是空的或没改过模板占位符",
-                       "编辑配置文件，把这两项填成你自己 bot 的称呼/正式名字。"))
+    if not bot_name:
+        items.append((FAIL, "bot_name 被显式设成空了，没有可用的唤醒词",
+                       "bot_name 留空会导致连兜底唤醒词都没有，编辑配置文件填回一个，"
+                       "或者删掉这一行让它用默认值「小助手」。"))
+    elif bot_name_alt:
+        items.append((PASS, f"唤醒词：兜底「{bot_name}」+ 自定义「{bot_name_alt}」，两个都认", ""))
     else:
-        items.append((PASS, f"唤醒词已配置：{bot_name} / {bot_name_alt}", ""))
+        items.append((PASS, f"唤醒词：只用兜底「{bot_name}」（没填自定义唤醒词，不填也能用）", ""))
     return items
 
 
