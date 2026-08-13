@@ -132,7 +132,7 @@ cat onboarding_output.log
     echo "1. 按上面 ❌ 逐条修，改完重跑：\`$PY onboarding_check.py\`"
     echo "2. 全部通过（或只剩 ❓）后再往下走。"
   else
-    echo "1. 编辑 \`config_silent.yaml\`，确认 \`bot_name\`/\`bot_name_alt\`（唤醒词）填的是你自己 bot 的称呼。"
+    echo "1.（可选）唤醒词默认「小助手」不填也能用；想用自己的名字，编辑 \`config_silent.yaml\` 的 \`bot_name_alt\`。"
     echo "2. 找一场你自己能加入的真实进行中的会议。"
     echo "3. 跑：\`$PY secretary_transcript_main.py --meeting-no <会议号> --config config_silent.yaml\`"
     echo "4. 会里喊配置的唤醒词说一件具体的事，确认收到\"收到任务N\"弹幕、以及任务完成后带 ✅/❌ 的结果弹幕。"
