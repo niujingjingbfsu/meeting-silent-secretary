@@ -87,11 +87,29 @@ CLI）→ 配置文件，每项标 ✅/❌ 并给出具体修复命令。**飞�
 
 ## 运行
 
+手动模式（默认，要显式给会议号）：
+
 ```bash
 python3 secretary_transcript_main.py --meeting-no <9位会议号> --config config_silent.yaml
 ```
 
 会加入指定的进行中会议，发一条开场白弹幕，之后只听、不打断，直到会议结束或被要求离会。
+
+### 可选：被邀请入会自动触发
+
+不想每次手动敲会议号的话，跑一个常驻监听器，别人把 bot 拉进会议就自动入会：
+
+```bash
+pip install lark-oapi   # 额外依赖，只有用这个能力才需要
+# 编辑 config_silent.yaml，填 app_id/app_secret（开放平台建应用时拿到的那对，
+# 跟 lark-cli 自己绑定的凭证是两码事，必须单独填）
+python3 secretary_invite_listener.py --config config_silent.yaml
+```
+
+⚠️ 这个能力验证过 SDK 层的接口真实存在、事件处理逻辑用模拟事件测过，但没有拿真实
+app_secret 跑通过一次真实的邀请事件（app_secret 我拿不到）——第一次用请自己冒烟测试：
+把 bot 拉进一场真实会议，确认真的自动跑起来了。原理和踩过的坑见 [`SKILL.md`](./SKILL.md)
+"核心机制五"。
 
 ## 配置项说明
 

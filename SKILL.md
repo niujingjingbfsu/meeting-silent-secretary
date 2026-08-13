@@ -28,6 +28,34 @@ description: 会中无声助手（会议秘书）——已打包成独立、自�
      → 子任务完成后自己发会中弹幕（结果 + ✅/❌完成标记）
 ```
 
+默认是**手动模式**：`secretary_transcript_main.py --meeting-no <会议号>` 要显式给会议号
+才会入会。想要"别人把 bot 拉进会议就自动触发"，见下面「核心机制五」。
+
+## 核心机制五：被邀请入会自动触发（`secretary_invite_listener.py`，可选）
+
+常驻监听 `vc.bot.meeting_invited_v1`（"bot 被拉进会议"）事件，收到后自动 spawn
+`secretary_transcript_main.py` 去加入那场会，不用再手动敲会议号。
+
+**这条路走得比想象中曲折**：先试了 `lark-cli event consume vc.bot.meeting_invited_v1`，
+实测 `lark-cli event list` 里根本没收录这个 EventKey（这个命令的目录里只有 user 身份的
+`vc.meeting.participant_meeting_*` 系列）；换查飞书官方 Python SDK（`lark-oapi`）自带的
+类型化事件处理器，同样没有预置这个事件的 handler。这不是"这个事件不存在"——我们自己生产
+环境的 Node.js bridge 用同一个事件 key、走原始 `dispatcher.register()` 注册方式确认过
+真实可用，`payload.meeting.meeting_no` 能直接拿到会议号——只是 lark-cli 的事件目录和
+lark-oapi 的类型化处理器目录都还没收录它。
+
+最终用 `lark-oapi` 提供的通用逃生舱口 `register_p2_customized_event(事件key字符串, handler)`
+绕开类型化目录限制，按原始 key 直接订阅。装这个能力需要额外 `pip install lark-oapi`
+（不在 requirements.txt 的默认依赖里），并且要在 config 里单独填一份 `app_id`/`app_secret`
+——这个监听器走独立的 WebSocket 长连接，跟 lark-cli 已绑定的凭证是两码事，读不到也不该
+去读 lark-cli 的私有凭证存储。
+
+⚠️ **诚实说明**：这份代码验证过 `lark-oapi` 的相关类/方法在当前 SDK 版本里真实存在（构造
+签名、`register_p2_customized_event`、`CustomizedEvent.event` 是原始 dict），事件处理器
+的去重/spawn 逻辑也用模拟事件测过；但没有拿真实 `app_secret` 跑通一次真实的 WebSocket
+连接+真实收到一次邀请事件——因为 app_secret 不在我能读取的范围内。第一次用这个能力的人
+请自己冒烟测试一次：把 bot 拉进一场真实会议，确认真的自动 spawn 出了对应进程。
+
 ## 核心机制一：判断层角色契约（`secretary_client.py` 的 `_init_judge`）
 
 只回下面几类标签之一，不解释、不寒暄：
