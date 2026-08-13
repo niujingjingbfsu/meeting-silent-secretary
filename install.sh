@@ -60,6 +60,30 @@ if [ ! -f config_silent.yaml ]; then
   echo "==> 已生成 config_silent.yaml（模板），记得编辑 bot_name/bot_name_alt 再用"
 fi
 
+echo "==> 检查 lark-cli"
+if ! command -v lark-cli >/dev/null 2>&1; then
+  echo "==> 没找到 lark-cli，尝试自动装（真实来源：@larksuite/cli 这个 npm 包）"
+  if command -v npm >/dev/null 2>&1; then
+    npm install -g @larksuite/cli
+  else
+    echo "❌ 没找到 npm，没法自动装 lark-cli——先装 Node.js/npm（装完自己跑一遍："
+    echo "   npm install -g @larksuite/cli），再重跑本脚本。" >&2
+    exit 1
+  fi
+else
+  echo "==> lark-cli 已安装，跑一次自更新，避免用旧版本"
+  lark-cli update || echo "⚠️ lark-cli update 失败（不阻塞安装，继续）"
+fi
+if command -v lark-cli >/dev/null 2>&1; then
+  echo "==> lark-cli 就绪：$(command -v lark-cli)（$(lark-cli --version 2>/dev/null)）"
+  echo "    如果这台机器上不止一个 lark-cli（比如另一个目录手动放过旧版本），"
+  echo "    上面这行路径/版本号就是实际会被调用的那一个，跟预期不符就去查 PATH 顺序。"
+else
+  echo "❌ lark-cli 装完还是找不到，可能装到了不在 PATH 里的目录，检查 npm 全局 bin 目录"
+  echo "   是否在 PATH 里（npm config get prefix）。" >&2
+  exit 1
+fi
+
 echo "==> 跑环境自检（onboarding_check.py）并生成安装报告"
 set +e
 $PY onboarding_check.py --dump-diagnostics diagnostics.json > onboarding_output.log 2>&1

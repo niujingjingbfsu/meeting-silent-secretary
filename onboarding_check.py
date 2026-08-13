@@ -59,10 +59,20 @@ def check_lark_cli():
     path = shutil.which("lark-cli")
     if not path:
         items.append((FAIL, "lark-cli 未安装/不在 PATH 里",
-                       "先装 lark-cli：https://github.com/larksuite/cli（或你租户内部分发渠道），"
+                       "装（真实来源：npm 包 @larksuite/cli）：npm install -g @larksuite/cli\n"
                        "装完确认 `lark-cli --version` 能跑通再重跑本脚本。"))
         return items
-    items.append((PASS, f"lark-cli 已安装 ({path})", ""))
+    try:
+        proc = subprocess.run(["lark-cli", "--version"], capture_output=True,
+                               text=True, timeout=10)
+        ver = (proc.stdout or proc.stderr).strip()
+    except Exception:
+        ver = "(取版本号失败)"
+    items.append((PASS, f"lark-cli 已安装：{path}（{ver}）",
+                  "这台机器上如果不止一个 lark-cli（比如别的目录手动放过旧版本），"
+                  "上面这行路径/版本号就是实际会被调用的那一个；跟预期不符，去查 PATH "
+                  "顺序，别假设\"装了新版本就一定会被用到\"。不确定版本新不新，先跑一遍 "
+                  "`lark-cli update` 更安全。"))
 
     try:
         proc = subprocess.run(["lark-cli", "auth", "status", "--json"],
