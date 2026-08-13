@@ -100,6 +100,40 @@ def check_lark_cli():
     return items
 
 
+def check_lark_cli_commands():
+    """"lark-cli 已安装"不等于"这个 Skill 需要的具体命令都在"——2026-08-13 晶晶指出：
+    有的运行环境（比如某些企业 agent 客户端自带的沙箱）会在沙箱文件夹里放一份自己的
+    lark-cli，且做过裁剪/命令黑名单，跟正常渠道装的完整版不是一回事。这里直接检查这个
+    Skill 真正用到的具体子命令是否存在，而不是只看 lark-cli 这个程序在不在。
+    踩过的坑：对不存在的子命令传 --help，cobra 框架会静默 fallback 打印父命令的帮助且
+    退出码仍是 0，不能只看退出码/exit code 判断命令存不存在，得去父命令 --help 输出的
+    命令列表里找有没有这个子命令名。"""
+    required = {
+        "vc": ["+meeting-join", "+meeting-leave", "+meeting-events", "+meeting-message-send"],
+        "im": ["+messages-send"],
+    }
+    items = []
+    for group, subcmds in required.items():
+        try:
+            proc = subprocess.run(["lark-cli", group, "--help"], capture_output=True,
+                                   text=True, timeout=10)
+            help_text = (proc.stdout or "") + (proc.stderr or "")
+        except Exception as e:
+            items.append((FAIL, f"lark-cli {group} --help 调用失败", str(e)))
+            continue
+        missing = [c for c in subcmds if c not in help_text]
+        if missing:
+            items.append((FAIL, f"lark-cli {group} 子命令缺失/被裁剪：{', '.join(missing)}",
+                          "当前解析到的这份 lark-cli 里没有这几个命令——大概率是运行环境自带"
+                          "了一份裁剪/限制过的 lark-cli（比如某些 agent 沙箱环境有命令黑名单），"
+                          "不是你没装对。确认当前 PATH 解析到的是不是那个受限副本（配合上面 "
+                          "lark-cli 路径那一条一起看），必要时联系该环境方确认这几个命令是否"
+                          "被有意拉黑，或者想办法让这个 Skill 跑在能用完整版 lark-cli 的地方。"))
+        else:
+            items.append((PASS, f"lark-cli {group} 所需子命令齐全：{', '.join(subcmds)}", ""))
+    return items
+
+
 def check_task_executor(skip_claude: bool):
     if skip_claude:
         return [(UNKNOWN, "执行层：已声明使用自定义 TaskExecutor，跳过 Claude CLI 检测",
@@ -179,6 +213,7 @@ def main():
     sections = [
         ("本地环境（所有 agent 通用）", check_python() + check_pyyaml()),
         ("lark-cli 与飞书 bot 身份（所有 agent 通用）", check_lark_cli()),
+        ("lark-cli 具体子命令是否被裁剪/拉黑（沙箱环境常见）", check_lark_cli_commands()),
         ("执行层「大脑」（出厂默认 Claude Code，可替换）",
          check_task_executor(args.no_claude_check)),
         ("配置文件", check_config(HERE / args.config)),

@@ -112,6 +112,7 @@ lark-oapi 的类型化处理器目录都还没收录它。
 - Feishu VC Agent 会中能力——`vc:meeting.bot.join:write`（入会/离会）+ `vc:meeting.meetingevent:read`（拉 `transcript_received`/弹幕事件）+ 发会中消息所需的 scope。装的时候如果 `lark-cli` 报 `missing required scope(s)`，跟着 CLI 自带的 `hint` 走，不要自己猜 scope 名字。
 - 一个能真正执行任务的 agent——出厂默认是 Claude CLI（`claude` 命令，带 `--dangerously-skip-permissions`），不想用 Claude 见上面"可插拔"一节自己接。
 - 常驻 asyncio 事件循环（进程必须是长期运行的架构，不能是一次性 subprocess）。
+- **"lark-cli 已安装"不等于"这个 Skill 需要的命令都在"**：2026-08-13 发现的真实场景——有的运行环境（比如豆包企业版这类企业 agent 客户端）会在自己的沙箱文件夹下自带一份 lark-cli，且做过裁剪/命令黑名单，跟正常渠道装的完整版不是一回事。`onboarding_check.py` 会具体检查 `vc +meeting-join`/`+meeting-leave`/`+meeting-events`/`+meeting-message-send`/`im +messages-send` 这几个命令在当前解析到的 lark-cli 里是否真的存在，而不是只看版本号——如果被裁剪，报错会指向"环境自带的受限副本"而不是让人误以为自己没装对。
 - **不需要**：任何第三方语音/ASR 账号（火山引擎/豆包等）——本能力包完全不发起任何语音相关的网络请求。
 
 ## 安装步骤
