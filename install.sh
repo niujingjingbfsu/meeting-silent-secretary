@@ -64,7 +64,21 @@ echo "==> 检查 lark-cli"
 if ! command -v lark-cli >/dev/null 2>&1; then
   echo "==> 没找到 lark-cli，尝试自动装（真实来源：@larksuite/cli 这个 npm 包）"
   if command -v npm >/dev/null 2>&1; then
-    npm install -g @larksuite/cli
+    if ! npm install -g @larksuite/cli 2>/tmp/npm_err_$$.log; then
+      echo "⚠️ 全局装失败（很可能是权限受限——沙盒/受限环境常见，比如没有写系统目录的权限），"
+      echo "   原始报错见下，改用当前用户可写的本地目录重试："
+      cat /tmp/npm_err_$$.log
+      rm -f /tmp/npm_err_$$.log
+      npm config set prefix "$HOME/.npm-global" 2>/dev/null || true
+      export PATH="$HOME/.npm-global/bin:$PATH"
+      if ! npm install -g @larksuite/cli; then
+        echo "❌ 本地目录方式也装不上，这个环境可能连自己 home 目录下写文件都不允许。" >&2
+        echo "   没法自动装 lark-cli，需要人工确认这个环境到底能不能装任何东西。" >&2
+        exit 1
+      fi
+      echo "==> 装到了 $HOME/.npm-global，记得以后调用前先："
+      echo '   export PATH="$HOME/.npm-global/bin:$PATH"'
+    fi
   else
     echo "❌ 没找到 npm，没法自动装 lark-cli——先装 Node.js/npm（装完自己跑一遍："
     echo "   npm install -g @larksuite/cli），再重跑本脚本。" >&2
@@ -72,7 +86,12 @@ if ! command -v lark-cli >/dev/null 2>&1; then
   fi
 else
   echo "==> lark-cli 已安装，跑一次自更新，避免用旧版本"
-  lark-cli update || echo "⚠️ lark-cli update 失败（不阻塞安装，继续）"
+  # 自更新失败不当硬性失败：受限/沙盒环境（比如某些企业agent运行时）可能干脆不允许
+  # 改动已安装的东西，这种情况下老实继续用当前版本，好过直接卡死装不下去。
+  if ! lark-cli update; then
+    echo "⚠️ lark-cli update 失败——如果这个环境本身就不让改已安装的东西（常见于沙盒/"
+    echo "   企业agent运行时），这是预期内的，不阻塞安装，继续用当前版本往下走。"
+  fi
 fi
 if command -v lark-cli >/dev/null 2>&1; then
   echo "==> lark-cli 就绪：$(command -v lark-cli)（$(lark-cli --version 2>/dev/null)）"
