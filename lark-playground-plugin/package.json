@@ -1,0 +1,79 @@
+{
+  "name": "plugin-meeting-silent-secretary",
+  "version": "0.1.0",
+  "description": "会中无声助手（会议秘书）：全程不语音发言，只默默听飞书自带逐字稿；被明确叫到名字才根据语音指令执行一次性任务，结果发会中弹幕",
+  "main": "./src/index.ts",
+  "keywords": [
+    "lark-playground-plugin"
+  ],
+  "larkPlayground": {
+    "coreContract": "1",
+    "contributes": [
+      "hook",
+      "command"
+    ],
+    "dependencies": [
+      "channel"
+    ],
+    "requiresCapabilities": [
+      "lark.vc.bot.join"
+    ],
+    "requiresScopes": [
+      "vc:meeting.bot.join:write",
+      "vc:meeting.message:write",
+      "vc:meeting.meetingevent:read"
+    ],
+    "requiresEvents": [
+      "vc.bot.meeting_invited_v1",
+      "vc.bot.meeting_activity_v1",
+      "vc.bot.meeting_ended_v1"
+    ],
+    "configuration": {
+      "autoJoin": {
+        "type": "boolean",
+        "default": true,
+        "reloadLevel": "live",
+        "description": "收到入会邀请时自动加入（关闭后需 /meeting.join 手动触发）"
+      },
+      "wakeWord": {
+        "type": "string",
+        "default": "小助手",
+        "reloadLevel": "live",
+        "description": "唤醒词：字幕里喊到这个名字才会响应指令"
+      },
+      "wakeWordAlt": {
+        "type": "string",
+        "default": "",
+        "reloadLevel": "live",
+        "description": "可选的第二个唤醒词（比如英文名），留空则只认 wakeWord"
+      },
+      "judgeDebounceMs": {
+        "type": "number",
+        "default": 1500,
+        "reloadLevel": "live",
+        "description": "字幕稳定等待窗口（毫秒）：同一段话的字幕更新在这个时间内合并成一次判断，避免一句话被判断多次"
+      }
+    },
+    "showcase": {
+      "doc": "README.md",
+      "prerequisites": [
+        "需申请「智能体入会」灰度",
+        "会议须开启「允许智能体入会」",
+        "飞书客户端 7.68+"
+      ]
+    },
+    "cliSkills": {
+      "meeting": [
+        "lark-vc",
+        "lark-vc-agent"
+      ]
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@larksuite/agentic-capabilities-playground": "*",
+    "typescript": "^5.7.2"
+  }
+}

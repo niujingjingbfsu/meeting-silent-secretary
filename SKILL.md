@@ -9,6 +9,8 @@ description: 会中无声助手（会议秘书）——已打包成独立、自�
 
 本目录是一个**独立、自包含的能力包**（不依赖任何主项目），可以直接复制走使用——见 [`README.md`](./README.md) 的安装/运行步骤。核心实现在 `secretary_client.py`（`MeetingSecretaryClient` 类），入口脚本是 `secretary_transcript_main.py`。
 
+**2026-08-20 新增 Lark Playground 插件版**：[`lark-playground-plugin/`](./lark-playground-plugin/) 是同一套能力的插件化移植，跑在 [Lark Playground](https://open.feishu.cn/document/no_class/mcp-archive/lark-playground-installation-guide.md)（`lark-channel-bridge` 的升级版，带独立 CLI/控制台+正式插件机制）上，不依赖这个仓库其余的 python 文件。两个版本能力范围一致，判断层/DO任务派发架构因为新平台原生能力更好而有所简化，差异见该目录 `README.md`。选哪个版本取决于你的运行环境是这个仓库原生的 python 常驻进程，还是已经在用 Lark Playground。
+
 秘书的"耳朵"走**飞书会议自带的逐字稿**（`vc +meeting-events` 的 `transcript_received` 事件），不接火山引擎/豆包等第三方语音大模型。原因：
 
 - 飞书逐字稿服务端已经按参会人分别转写，`payload.speaker.user_name` 自带准确的说话人身份——这是"待办写清楚责任人是谁"这个需求的唯一可靠数据源；混音音频接第三方 ASR 从架构上就拿不到这个信息（一条混音流听不出是谁在说）。
