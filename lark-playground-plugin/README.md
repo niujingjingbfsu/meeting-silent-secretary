@@ -23,7 +23,7 @@ lark-playground plugin pack ./lark-playground-plugin   # → plugin-meeting-sile
 | `autoJoin` | `true` | 收到入会邀请时自动加入；关闭后要显式 `/meeting.join` |
 | `wakeWord` | `小助手` | 唤醒词，字幕里喊到这个名字才会响应指令 |
 | `wakeWordAlt` | （空） | 可选的第二个唤醒词，留空则只认 `wakeWord` |
-| `judgeDebounceMs` | `1500` | 字幕稳定等待窗口，同一段话的中间态在这个时间内合并成一次判断 |
+| `judgeDebounceMs` | `3000` | 字幕稳定等待窗口，同一段话的中间态在这个时间内合并成一次判断；调大能降低判断触发频率（省 token），代价是响应变慢 |
 
 ## 前置条件
 
@@ -31,7 +31,7 @@ lark-playground plugin pack ./lark-playground-plugin   # → plugin-meeting-sile
 
 ## 跟 python 版的架构性差异（不是偷懒，是新平台原生就更好）
 
-1. **判断层从"常驻会话+看门狗重建"简化成每次独立的 `ctx.llm.complete`**。python 版要维护一个长期存活的判断会话（`_init_judge`/`_rebuild_judge`），卡死了要检测+重连；`ctx.llm.complete` 本身就是无状态、一次一次独立调用的，角色规则每次完整拼进 prompt，反而不需要这一整套生命周期管理。
+1. **判断层从"常驻会话+看门狗重建"简化成每次独立的 `ctx.llm.complete`**。python 版要维护一个长期存活的判断会话（`_init_judge`/`_rebuild_judge`），卡死了要检测+重连；`ctx.llm.complete` 本身就是无状态、一次一次独立调用的，角色规则每次完整拼进 prompt，反而不需要这一整套生命周期管理。**代价**：无状态意味着每次判断都要把约 1650 字的角色规则原文重新发一遍（python 版的常驻会话只在入会时发一次，后续只发增量），一场会触发几十次判断就重复发几十遍——这是真实的 token 开销，不是可以忽略的细节（2026-08-26 反馈）。`judgeDebounceMs` 默认调到 3000ms 就是为了压这个：字幕合并成更少的判断次数，同等时长内规则文本重复发送的次数也跟着降；平台没有给"常驻判断会话"这个能力，这条路目前只能靠调大防抖窗口缓解，不能根治。
 2. **DO 任务不再依赖子任务自己发弹幕**。python 版要求执行任务的子 Claude 自己调 `vc +meeting-message-send` 把结果发出去，并输出 `BARRAGE_SENT: yes/no` 供上层核实——这个架构下"子任务生成了结果但忘了发/发送失败"是要专门兜底的一类真实 bug。插件版里 `session.dispatch()` 直接拿到最终文本（`TurnResult.text`），弹幕由插件本身确定性地发送，子任务不需要、也不允许自己调发送工具——整类失败模式在架构层面消失了，不需要再输出 `BARRAGE_SENT` 这个标记。
 3. **字幕去重不用自己写**。python 版要手撕 ASR 中间态前缀匹配（"这句是不是上一句的流式增量"）和"是不是 bot 自己回声"的名字比对；插件版走 channel-sdk 的 `sentenceId` 覆盖语义（中间态被最终态原地替换）+ `selfEcho` 字段（bot 自己的话已经被平台标记出来），`state.ts` 里不需要重写这两段逻辑。
 4. **DO 任务并发度**：python 版允许最多 5 个 DO 任务并行跑（各自独立的 `claude` 子进程）；插件版一个会议对应一个 `PluginSession`，`onBusy: 'queue'` 让 DO 任务排队串行执行，同一时刻只有一件事在跑。这是刻意的简化，不是遗漏——多个任务真并行需要为每个任务开独立的非会议 session，属于明显的未来扩展项，不是这次移植要解决的问题，先按队列语义把行为跑对。

@@ -49,9 +49,9 @@
       },
       "judgeDebounceMs": {
         "type": "number",
-        "default": 1500,
+        "default": 3000,
         "reloadLevel": "live",
-        "description": "字幕稳定等待窗口（毫秒）：同一段话的字幕更新在这个时间内合并成一次判断，避免一句话被判断多次"
+        "description": "字幕稳定等待窗口（毫秒）：同一段话的字幕更新在这个时间内合并成一次判断，避免一句话被判断多次；调大能减少判断次数、降低 token 消耗，代价是响应变慢"
       }
     },
     "showcase": {
